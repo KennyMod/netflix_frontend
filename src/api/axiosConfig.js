@@ -1,8 +1,9 @@
 import axios from 'axios';
 
-// Baked in at build time by Create React App.
-// Set REACT_APP_API_URL as a Docker build arg, not a runtime env var.
-const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+// Relative base URL. In production, nginx proxies /api to the backend
+// container, so the browser never makes a cross-origin request.
+// In development, CRA's proxy setting (package.json) does the same job.
+const baseURL = process.env.REACT_APP_API_URL || '';
 
 export default axios.create({
     baseURL,
