@@ -1,8 +1,12 @@
-name: Build and push docker image
+name: Build and push frontend to ECR
 
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
+
+env:
+  ECR_REPOSITORY: movie-frontend
 
 jobs:
   build-and-push:
@@ -10,33 +14,30 @@ jobs:
 
     permissions:
       contents: read
-      id-token: write
 
     steps:
-    - name: Check out the repository
-      uses: actions/checkout@v2
+      - name: Check out the repository
+        uses: actions/checkout@v4
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
-    
-        
-# Login to ECR
-#=============
-    - name: Login to ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-
-    - name: Docker build 
-      run: |
-        docker build -t netflix_frontend:latest .
-
-    - name: Docker push
-      run: |
-        docker tag netflix_frontend:latest 060276830770.dkr.ecr.us-east-2.amazonaws.com/movie-frontend:${GITHUB_RUN_NUMBER}
-        docker push 060276830770.dkr.ecr.us-east-2.amazonaws.com/movie-frontend:${GITHUB_RUN_NUMBER}
+      - name: Build and push image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.run_number }}
+        run: |
+          docker build \
+            -t $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            -t $REGISTRY/$ECR_REPOSITORY:latest \
+            .
+          docker push $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $REGISTRY/$ECR_REPOSITORY:latest
